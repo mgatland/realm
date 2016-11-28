@@ -9,9 +9,14 @@
 		</style>
 	</head>
 	<body>
+		<script src="https://cdn.rawgit.com/daishihmr/vox.js/97638c1ec2c24020e94851fac4d5ec4f2db192f5/build/vox.min.js"></script>
 		<script src="js/three.js"></script>
 		<script src="js/net.js"></script>
 		<script>
+
+//Let's say 1 unit = 1 metre
+//and a standard character is 2 metres tall
+//a voxel is imported at 0.125, so 16 voxels = 2 metres
 
 NET.connect();
 
@@ -21,6 +26,7 @@ var scene = new THREE.Scene();
 var width = 30;
 var height = 30;
 
+//consider a black and white outline art style, like http://analysis.4sceners.de/#!/
 
 //var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
@@ -31,7 +37,8 @@ var camera = new THREE.OrthographicCamera(
 var renderer = new THREE.WebGLRenderer();
 renderer.shadowMap.enabled = true;
 
-renderer.setSize( window.innerWidth, window.innerHeight );
+var screenDimension = Math.min(window.innerWidth, window.innerHeight);
+renderer.setSize( screenDimension, screenDimension );
 document.body.appendChild( renderer.domElement );
 
 var geometry = new THREE.BoxGeometry( 1, 1, 1 );
@@ -51,18 +58,44 @@ scene.add (cube3);
 cube3.scale.x = 0.5;
 cube3.scale.y = 0.5;
 cube3.scale.z = 0.5;
-cube3.position.z += 3;
+cube3.position.z += 6;
 cube3.position.y = 0.5;
 
-camera.position.z = 0;
-camera.position.y = 11; //3 for perspective view
-camera.rotation.x = -0.9;
-camera.rotation.y = 0.1;
+camera.position.set( 2, 15, 20 ); // first number is how 'angled' we are, 0 means straight on
+camera.lookAt( scene.position ); // or the origin
 
 //   /|\ y
 //    |
 //    |_____x
 //
+
+// voxel mesh test
+
+var mesh;
+var parser = new vox.Parser();
+
+//more models: https://github.com/ephtracy/voxel-model/tree/master/vox/character
+
+parser.parse("../3d/chr_knight.vox").then(function(voxelData) {
+	var builder = new vox.MeshBuilder(voxelData, 
+		{voxelSize: 0.125, vertexColor: false, optimizeFaces: true});
+	mesh = builder.createMesh();
+	mesh.position.z = -5;
+	mesh.position.y = 0;
+	mesh.rotation.y = 0;
+	mesh.castShadow = true;
+	scene.add(mesh);
+
+	//add many copies
+	for (var i = 0; i < 20; i++) {
+		var mesh2 = mesh.clone();
+		mesh2.position.x = Math.random() * -30 + 15;
+		mesh2.position.z = Math.random() * -36 + 18;
+		mesh2.rotation.y = Math.random() * Math.PI * 2;
+		scene.add(mesh2);
+	}
+
+});
 
 //ground
 
@@ -81,29 +114,86 @@ ground.rotation.x = -Math.PI/2;
 ground.position.y = Environment.GROUND_Y;
 scene.add( ground );
 
+// lights
+
 var light = new THREE.DirectionalLight( 0xffffff, 0.5 );
-light.position.set( -0.8, 1, -0 );
+light.position.set( -0.8, 1, 1.4 );
+light.position.multiplyScalar(50);
 light.castShadow = true;
-light.shadow.camera.right     =  5;
-light.shadow.camera.left     = -5;
-light.shadow.camera.top      =  5;
-light.shadow.camera.bottom   = -5;
+
+light.shadow.mapSize.width = 2048;
+light.shadow.mapSize.height = 2048;
+
+var d = 27;
+light.shadow.camera.left = -d;
+light.shadow.camera.right = d;
+light.shadow.camera.top = d;
+light.shadow.camera.bottom = -d;
+light.shadow.camera.far = 3500;
+light.shadow.bias = -0.0001;
 scene.add( light );
 
-var ambLight = new THREE.AmbientLight( 0x404040);
+var camHelper = new THREE.CameraHelper(light.shadow.camera);
+scene.add(camHelper);
+
+//var camHelper2 = new THREE.DirectionalLightHelper(light, 7);
+//scene.add(camHelper2);
+
+var ambLight = new THREE.AmbientLight( 0xffffff, 0.5);
 scene.add(ambLight);
 
 //
 
+var keysDown = {};
+
 function render() {
 	requestAnimationFrame( render );
-	cube.rotation.y += 0.01;
 	cube2.rotation.y -= 0.01;
 	cube3.rotation.y += 0.01;
+	if (keysDown["w"]) mesh.position.z -= 0.2;
+	if (keysDown["s"]) mesh.position.z += 0.2;
+	if (keysDown["a"]) mesh.position.x -= 0.2;
+	if (keysDown["d"]) mesh.position.x += 0.2;
 	renderer.render( scene, camera );
 }
 render();
 
+window.onkeydown = function (e) {
+	keysDown[e.key] = true;
+}
+window.onkeyup = function (e) {
+	keysDown[e.key] = false;
+}
+
+var mouseXScale = 30;
+var mouseYScale = 30;
+
+window.onmousemove = function (event) {
+	//http://stackoverflow.com/questions/13055214/mouse-canvas-x-y-to-three-js-world-x-y-z
+	//this doesn't work, so I have the 'mouseXScale' and 'mouseYScale' but i don't know 
+	//what they should really be, it's all hacks
+	//console.log('start');
+	var vector = new THREE.Vector3();
+	vector.set(
+	    ( event.clientX / screenDimension ) * 2 - 1,
+	    - ( event.clientY / screenDimension ) * 2 + 1,
+	    0.5
+	    );
+	vector.unproject( camera );
+	//console.log("x:" + vector.x.toFixed(2) + " y:" + vector.y.toFixed(2) + " z:" +  vector.z.toFixed(2));
+	var dir = vector.sub( camera.position ).normalize();
+	var distance = - camera.position.y / dir.y;
+	//console.log("distance: " aaaaaaas+ distance);
+	var pos = camera.position.clone().add( dir.multiplyScalar( distance ) );
+	console.log("x:" + pos.x.toFixed(2) + " y:" + pos.y.toFixed(2) + " z:" +  pos.z.toFixed(2));
+	//console.log(pos);
+	//hack: teleport mesh to cursor pos:
+	//mesh.position.x = pos.x * mouseXScale;
+	//mesh.position.z = pos.z * mouseYScale;
+
+	var lookPos = new THREE.Vector3(pos.x * mouseXScale, 0, pos.z * mouseYScale);
+	mesh.lookAt(lookPos);
+}
 		</script>
 	</body>
 </html>
