@@ -74,9 +74,7 @@ camera.lookAt( scene.position ); // or the origin
 var mesh;
 var parser = new vox.Parser();
 
-//more models: https://github.com/ephtracy/voxel-model/tree/master/vox/character
-
-parser.parse("../3d/chr_knight.vox").then(function(voxelData) {
+parser.parse("../3d/chr_ranger.vox").then(function(voxelData) {
 	var builder = new vox.MeshBuilder(voxelData, 
 		{voxelSize: 0.125, vertexColor: false, optimizeFaces: true});
 	mesh = builder.createMesh();
