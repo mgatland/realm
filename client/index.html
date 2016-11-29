@@ -183,7 +183,7 @@ window.onmousemove = function (event) {
 	var distance = - camera.position.y / dir.y;
 	//console.log("distance: " aaaaaaas+ distance);
 	var pos = camera.position.clone().add( dir.multiplyScalar( distance ) );
-	console.log("x:" + pos.x.toFixed(2) + " y:" + pos.y.toFixed(2) + " z:" +  pos.z.toFixed(2));
+	//console.log("x:" + pos.x.toFixed(2) + " y:" + pos.y.toFixed(2) + " z:" +  pos.z.toFixed(2));
 	//console.log(pos);
 	//hack: teleport mesh to cursor pos:
 	//mesh.position.x = pos.x * mouseXScale;
@@ -191,6 +191,8 @@ window.onmousemove = function (event) {
 
 	var lookPos = new THREE.Vector3(pos.x * mouseXScale, 0, pos.z * mouseYScale);
 	mesh.lookAt(lookPos);
+	//lock rotation to 8 directions
+	mesh.rotation.y = Math.round(mesh.rotation.y / Math.PI * 4) * Math.PI / 4;
 }
 		</script>
 	</body>
