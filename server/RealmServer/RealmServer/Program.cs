@@ -24,6 +24,7 @@ namespace RealmServer
             var server = new WebSocketServer(3000);
             server.AddWebSocketService<GameplayService>("/game");
             server.Start();
+            Console.WriteLine("Server listening on 3000");
             Console.ReadKey(true);
             server.Stop();
         }

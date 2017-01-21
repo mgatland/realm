@@ -12,6 +12,7 @@
 		<script src="https://cdn.rawgit.com/daishihmr/vox.js/97638c1ec2c24020e94851fac4d5ec4f2db192f5/build/vox.min.js"></script>
 		<script src="js/three.js"></script>
 		<script src="js/net.js"></script>
+		<script src="js/game.js"></script>
 		<script>
 
 //Let's say 1 unit = 1 metre
@@ -19,6 +20,8 @@
 //a voxel is imported at 0.125, so 16 voxels = 2 metres
 
 NET.connect();
+
+var game = GAME;
 
 var Environment = { GROUND_Y: 0, GROUND_WIDTH: 100, GROUND_LENGTH: 100}
 
@@ -69,34 +72,43 @@ camera.lookAt( scene.position ); // or the origin
 //    |_____x
 //
 
-// voxel mesh test
-
-var mesh;
 var parser = new vox.Parser();
+var meshesToLoad = 0;
+var mesh = [];
+var meshNum = 0;
+var meshCode = {};
 
-parser.parse("../3d/chr_ranger.vox").then(function(voxelData) {
-	var builder = new vox.MeshBuilder(voxelData, 
-		{voxelSize: 0.125, vertexColor: false, optimizeFaces: true});
-	mesh = builder.createMesh();
-	mesh.position.z = -5;
-	mesh.position.y = 0;
-	mesh.rotation.y = 0;
-	mesh.castShadow = true;
-	scene.add(mesh);
+function loadMesh(name, path) {
+	var index = meshNum;
+	meshCode[name] = index;
+	meshNum++;
+	meshesToLoad++;
+	parser.parse("../3d/" + path + ".vox").then(function(voxelData) {
+		var builder = new vox.MeshBuilder(voxelData, 
+			{voxelSize: 0.125, vertexColor: false, optimizeFaces: true});
+		var newMesh = builder.createMesh();
+		newMesh.position.z = -5;
+		newMesh.position.y = 0;
+		newMesh.rotation.y = 0;
+		newMesh.castShadow = true;
+		mesh[index] = newMesh;
+		meshesToLoad--;
+		if (meshesToLoad == 0) {
+			finishedLoadingMeshes();
+		}
+	});	
+}
 
-	//add many copies
-	for (var i = 0; i < 20; i++) {
-		var mesh2 = mesh.clone();
-		mesh2.position.x = Math.random() * -30 + 15;
-		mesh2.position.z = Math.random() * -36 + 18;
-		mesh2.rotation.y = Math.random() * Math.PI * 2;
-		scene.add(mesh2);
-	}
+loadMesh("mage", "chr_mage");
+loadMesh("ranger", "chr_ranger");
 
-});
+game.init();
+
+function finishedLoadingMeshes() {
+	render();
+}
 
 //ground
-
 texture = THREE.ImageUtils.loadTexture('images/sand.png');
 texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
 texture.repeat.set(30, 30);
@@ -148,13 +160,35 @@ function render() {
 	requestAnimationFrame( render );
 	cube2.rotation.y -= 0.01;
 	cube3.rotation.y += 0.01;
-	if (keysDown["w"]) mesh.position.z -= 0.2;
-	if (keysDown["s"]) mesh.position.z += 0.2;
-	if (keysDown["a"]) mesh.position.x -= 0.2;
-	if (keysDown["d"]) mesh.position.x += 0.2;
+
+	var inputs = {};
+	inputs.up = keysDown["w"];
+	inputs.down = keysDown["s"];
+	inputs.left = keysDown["a"];
+	inputs.right = keysDown["d"];
+	game.tick(inputs);
+
+	if (game._player.obj == undefined) {
+		game._player.obj = mesh[game._player.model].clone();
+		scene.add(game._player.obj);
+	}
+	game._player.obj.position.x = game._player.x;
+	game._player.obj.position.z = game._player.y;
+	
+	game._enemies.forEach(function (enemy) {
+		if (enemy.obj == undefined) {
+			console.log("add enemy mesh");
+			enemy.obj = mesh[enemy.model].clone();
+			scene.add(enemy.obj);
+		}
+		var enemyMesh = enemy.obj;
+		enemyMesh.position.x = enemy.x;
+		enemyMesh.position.z = enemy.y;
+		enemyMesh.rotation.y = enemy.dir;
+	})
+
 	renderer.render( scene, camera );
 }
-render();
 
 window.onkeydown = function (e) {
 	keysDown[e.key] = true;
@@ -190,9 +224,12 @@ window.onmousemove = function (event) {
 	//mesh.position.z = pos.z * mouseYScale;
 
 	var lookPos = new THREE.Vector3(pos.x * mouseXScale, 0, pos.z * mouseYScale);
-	mesh.lookAt(lookPos);
-	//lock rotation to 8 directions
-	mesh.rotation.y = Math.round(mesh.rotation.y / Math.PI * 4) * Math.PI / 4;
+
+	if (game._player.obj != undefined) {
+		game._player.obj.lookAt(lookPos);
+		//lock rotation to 8 directions
+		game._player.obj.rotation.y = Math.round(game._player.obj.rotation.y / Math.PI * 4) * Math.PI / 4;
+	}
 }
 		</script>
 	</body>
