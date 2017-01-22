@@ -166,6 +166,8 @@ function render() {
 	inputs.down = keysDown["s"];
 	inputs.left = keysDown["a"];
 	inputs.right = keysDown["d"];
+	inputs.mouseDown = mouseDown;
+	inputs.mousePos = mousePos;
 	game.tick(inputs);
 
 	if (game._player.obj == undefined) {
@@ -175,18 +177,21 @@ function render() {
 	game._player.obj.position.x = game._player.x;
 	game._player.obj.position.z = game._player.y;
 	
-	game._enemies.forEach(function (enemy) {
-		if (enemy.obj == undefined) {
-			console.log("add enemy mesh");
-			enemy.obj = mesh[enemy.model].clone();
-			scene.add(enemy.obj);
+	function renderThing (thing) {
+		if (thing.obj == undefined) {
+			console.log("added mesh");
+			thing.obj = mesh[thing.model].clone();
+			scene.add(thing.obj);
 		}
-		var enemyMesh = enemy.obj;
-		enemyMesh.position.x = enemy.x;
-		enemyMesh.position.z = enemy.y;
-		enemyMesh.rotation.y = enemy.dir;
-	})
+		var thingMesh = thing.obj;
+		thingMesh.position.x = thing.x;
+		thingMesh.position.z = thing.y;
+		thingMesh.rotation.y = thing.dir;
+	}
 
+	game._enemies.forEach(renderThing);
+	game._shots.forEach(renderThing);
+	
 	renderer.render( scene, camera );
 }
 
@@ -199,6 +204,9 @@ window.onkeyup = function (e) {
 
 var mouseXScale = 30;
 var mouseYScale = 30;
+
+var mousePos = {x:0, y:0};
+var mouseDown = false;
 
 window.onmousemove = function (event) {
 	//http://stackoverflow.com/questions/13055214/mouse-canvas-x-y-to-three-js-world-x-y-z
@@ -224,6 +232,8 @@ window.onmousemove = function (event) {
 	//mesh.position.z = pos.z * mouseYScale;
 
 	var lookPos = new THREE.Vector3(pos.x * mouseXScale, 0, pos.z * mouseYScale);
+	mousePos.x = lookPos.x;
+	mousePos.y = lookPos.z;
 
 	if (game._player.obj != undefined) {
 		game._player.obj.lookAt(lookPos);
@@ -231,6 +241,15 @@ window.onmousemove = function (event) {
 		game._player.obj.rotation.y = Math.round(game._player.obj.rotation.y / Math.PI * 4) * Math.PI / 4;
 	}
 }
+
+window.onmousedown = function (e) {
+	mouseDown = true;
+}
+
+window.onmouseup = function (event) {
+	mouseDown = false;
+}
+
 		</script>
 	</body>
 </html>
