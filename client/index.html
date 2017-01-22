@@ -121,11 +121,13 @@ light.castShadow = true;
 light.shadow.mapSize.width = 2048;
 light.shadow.mapSize.height = 2048;
 
-var d = 27;
-light.shadow.camera.left = -d;
-light.shadow.camera.right = d;
-light.shadow.camera.top = d;
-light.shadow.camera.bottom = -d;
+//tweaked to fill the screen at current angle
+var shadowAreaSizeX = 18;
+var shadowAreaSizeY = 10;
+light.shadow.camera.left = -shadowAreaSizeX;
+light.shadow.camera.right = shadowAreaSizeX;
+light.shadow.camera.top = shadowAreaSizeY;
+light.shadow.camera.bottom = -shadowAreaSizeY;
 light.shadow.camera.far = 3500;
 light.shadow.bias = -0.0001;
 scene.add( light );
@@ -177,6 +179,18 @@ function render() {
 	game._shots.forEach(renderThing);
 
 	camera.position.set( game._player.x + 2, 15, game._player.y + 20 );
+
+	var center = {x:game._player.x, y:game._player.y};
+	console.log(center);
+
+	//FIXME: transform the light matrix by the player matrix
+	//this does not work
+	light.shadow.camera.left = center.x - shadowAreaSizeX;
+	light.shadow.camera.right = center.x + shadowAreaSizeX;
+	light.shadow.camera.top = -center.y + shadowAreaSizeY;
+	light.shadow.camera.bottom = -center.y - shadowAreaSizeY;
+	light.shadow.camera.updateProjectionMatrix();
+
 	renderer.render( scene, camera );
 }
 
