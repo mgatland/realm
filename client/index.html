@@ -31,8 +31,6 @@ var height = 20;
 
 //consider a black and white outline art style, like http://analysis.4sceners.de/#!/
 
-//var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-
 var camera = new THREE.OrthographicCamera(
 	width / -2, width / 2,
 	height / 2, height / -2, 0.1, 1000 );
@@ -46,23 +44,12 @@ document.body.appendChild( renderer.domElement );
 
 var geometry = new THREE.BoxGeometry( 1, 1, 1 );
 var material = new THREE.MeshPhongMaterial( { color: 0x00ff00 } );
+
 var cube = new THREE.Mesh( geometry, material );
 cube.castShadow = true;
 cube.position.y = 0.5;
 cube.position.z = -1;
 scene.add(cube);
-
-var cube2 = cube.clone();
-scene.add (cube2);
-cube2.position.z += 2;
-
-var cube3 = cube.clone();
-scene.add (cube3);
-cube3.scale.x = 0.5;
-cube3.scale.y = 0.5;
-cube3.scale.z = 0.5;
-cube3.position.z += 6;
-cube3.position.y = 0.5;
 
 camera.position.set( 2, 15, 20 ); // first number is how 'angled' we are, 0 means straight on
 camera.lookAt( scene.position ); // or the origin
@@ -143,8 +130,8 @@ light.shadow.camera.far = 3500;
 light.shadow.bias = -0.0001;
 scene.add( light );
 
-var camHelper = new THREE.CameraHelper(light.shadow.camera);
-scene.add(camHelper);
+//var camHelper = new THREE.CameraHelper(light.shadow.camera);
+//scene.add(camHelper);
 
 //var camHelper2 = new THREE.DirectionalLightHelper(light, 7);
 //scene.add(camHelper2);
@@ -152,14 +139,11 @@ scene.add(camHelper);
 var ambLight = new THREE.AmbientLight( 0xffffff, 0.5);
 scene.add(ambLight);
 
-//
-
 var keysDown = {};
 
 function render() {
 	requestAnimationFrame( render );
-	cube2.rotation.y -= 0.01;
-	cube3.rotation.y += 0.01;
+	cube.rotation.y -= 0.01;
 
 	var inputs = {};
 	inputs.up = keysDown["w"];
@@ -191,7 +175,8 @@ function render() {
 
 	game._enemies.forEach(renderThing);
 	game._shots.forEach(renderThing);
-	
+
+	camera.position.set( game._player.x + 2, 15, game._player.y + 20 );
 	renderer.render( scene, camera );
 }
 
@@ -202,36 +187,23 @@ window.onkeyup = function (e) {
 	keysDown[e.key] = false;
 }
 
-var mouseXScale = 30;
-var mouseYScale = 30;
-
 var mousePos = {x:0, y:0};
 var mouseDown = false;
 
+var raycaster = new THREE.Raycaster(); //created once for perf
 window.onmousemove = function (event) {
-	//http://stackoverflow.com/questions/13055214/mouse-canvas-x-y-to-three-js-world-x-y-z
-	//this doesn't work, so I have the 'mouseXScale' and 'mouseYScale' but i don't know 
-	//what they should really be, it's all hacks
-	//console.log('start');
-	var vector = new THREE.Vector3();
-	vector.set(
-	    ( event.clientX / screenDimension ) * 2 - 1,
-	    - ( event.clientY / screenDimension ) * 2 + 1,
-	    0.5
-	    );
-	vector.unproject( camera );
-	//console.log("x:" + vector.x.toFixed(2) + " y:" + vector.y.toFixed(2) + " z:" +  vector.z.toFixed(2));
-	var dir = vector.sub( camera.position ).normalize();
-	var distance = - camera.position.y / dir.y;
-	//console.log("distance: " aaaaaaas+ distance);
-	var pos = camera.position.clone().add( dir.multiplyScalar( distance ) );
-	//console.log("x:" + pos.x.toFixed(2) + " y:" + pos.y.toFixed(2) + " z:" +  pos.z.toFixed(2));
-	//console.log(pos);
-	//hack: teleport mesh to cursor pos:
-	//mesh.position.x = pos.x * mouseXScale;
-	//mesh.position.z = pos.z * mouseYScale;
+	var mouse = new THREE.Vector2();
+	mouse.x = (event.clientX / screenDimension) * 2 - 1;
+	mouse.y = (event.clientY / screenDimension ) * 2 - 1;
+	mouse.y = -mouse.y;
+	raycaster.setFromCamera(mouse, camera);
+	var intersects = raycaster.intersectObject(ground);
+	var pos = raycaster.ray.origin.add(raycaster.ray.direction.clone().multiplyScalar(intersects[0].distance));
 
-	var lookPos = new THREE.Vector3(pos.x * mouseXScale, 0, pos.z * mouseYScale);
+	//cube.position.x = pos.x;
+	//cube.position.z = pos.z;
+
+	var lookPos = new THREE.Vector3(pos.x, 0, pos.z);
 	mousePos.x = lookPos.x;
 	mousePos.y = lookPos.z;
 
